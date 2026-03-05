@@ -1,0 +1,361 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ONGC_ADMIN
+  ONGC_ENGINEER
+  CMS_COORDINATOR
+  CMS_TECHNICIAN
+  INSTALLATION_MANAGER
+  READ_ONLY
+}
+
+enum Division {
+  PRODUCTION
+  DRILLING
+}
+
+enum WorkingStatus {
+  WORKING
+  NOT_WORKING
+}
+
+enum CalibrationStatus {
+  CALIBRATED
+  PENDING
+  OVERDUE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum WorkRequestStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  CONVERTED
+  REJECTED
+  CANCELLED
+}
+
+enum WorkOrderStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+  PENDING_REPORT
+}
+
+enum DeploymentMode {
+  ONSITE
+  REMOTE
+}
+
+enum DocumentCategory {
+  CALIBRATION
+  SLA
+  DEPLOYMENT
+  CONTRACT
+  REQUEST_ATTACHMENT
+  OTHER
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REVISION_NEEDED
+}
+
+model ServiceCatalog {
+  id           String       @id @default(uuid())
+  name         String       @unique
+  description  String?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  instruments  Instrument[]
+  workOrders   WorkOrder[]
+  workRequests WorkRequest[]
+}
+
+model Installation {
+  id                 String                          @id @default(uuid())
+  name               String                          @unique
+  division           Division
+  area               String
+  location           String?
+  isActive           Boolean                         @default(true)
+  createdAt          DateTime                        @default(now())
+  updatedAt          DateTime                        @updatedAt
+  instruments        Instrument[]
+  workRequests       WorkRequest[]
+  workOrders         WorkOrder[]
+  managerAssignments InstallationManagerAssignment[]
+}
+
+model Instrument {
+  id              String            @id @default(uuid())
+  instrumentCode  String            @unique
+  tagNo           String
+  installationId  String
+  serviceId       String?
+  equipmentType   String
+  make            String?
+  model           String?
+  serialNo        String?
+  workingStatus   WorkingStatus     @default(WORKING)
+  calStatus       CalibrationStatus @default(PENDING)
+  lastCalibration DateTime?
+  nextCalibration DateTime?
+  scadaConnected  Boolean           @default(false)
+  isActive        Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  installation    Installation      @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  service         ServiceCatalog?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  workRequests    WorkRequest[]
+  workOrders      WorkOrder[]
+
+  @@index([installationId])
+  @@index([serviceId])
+  @@index([tagNo])
+}
+
+model ContractPersonnel {
+  id             String                @id @default(uuid())
+  personnelCode  String                @unique
+  name           String
+  designation    String?
+  specialization String?
+  email          String?
+  phone          String?
+  isActive       Boolean               @default(true)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  user           User?
+  assignments    WorkOrderAssignment[]
+  attendance     Attendance[]
+}
+
+model OngcPersonnel {
+  id                 String        @id @default(uuid())
+  employeeCode       String        @unique
+  name               String
+  designation        String?
+  email              String?
+  phone              String?
+  isActive           Boolean       @default(true)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  user               User?
+  reviewedRequests   WorkRequest[] @relation("RequestReviewer")
+  assignedWorkOrders WorkOrder[]   @relation("WorkOrderEngineer")
+}
+
+model InstallationManager {
+  id           String                          @id @default(uuid())
+  managerCode  String                          @unique
+  name         String
+  email        String?
+  phone        String?
+  isActive     Boolean                         @default(true)
+  createdAt    DateTime                        @default(now())
+  updatedAt    DateTime                        @updatedAt
+  user         User?                           @relation("ManagerUser")
+  assignments  InstallationManagerAssignment[]
+  workRequests WorkRequest[]
+}
+
+model InstallationManagerAssignment {
+  id             String              @id @default(uuid())
+  installationId String
+  managerId      String
+  createdAt      DateTime            @default(now())
+  installation   Installation        @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  manager        InstallationManager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@unique([installationId, managerId])
+  @@index([installationId])
+  @@index([managerId])
+}
+
+model WorkRequest {
+  id                   String             @id @default(uuid())
+  requestNo            String             @unique
+  installationId       String
+  instrumentId         String?
+  serviceId            String?
+  requestedByManagerId String
+  createdByUserId      String?
+  title                String
+  description          String
+  priority             Priority           @default(MEDIUM)
+  requestedDate        DateTime           @default(now())
+  preferredDate        DateTime?
+  status               WorkRequestStatus  @default(DRAFT)
+  reviewedById         String?
+  reviewedAt           DateTime?
+  convertedWorkOrderId String?            @unique
+  remarks              String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  installation         Installation       @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  instrument           Instrument?        @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  service              ServiceCatalog?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  requestedByManager   InstallationManager @relation(fields: [requestedByManagerId], references: [id], onDelete: Restrict)
+  createdByUser        User?              @relation("RequestedByManagerUser", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reviewedBy           OngcPersonnel?     @relation("RequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  convertedWorkOrder   WorkOrder?         @relation("RequestConvertedOrder", fields: [convertedWorkOrderId], references: [id], onDelete: SetNull)
+  documents            Document[]
+
+  @@index([installationId])
+  @@index([instrumentId])
+  @@index([requestedByManagerId])
+  @@index([status])
+}
+
+model WorkOrder {
+  id              String             @id @default(uuid())
+  workOrderNo     String             @unique
+  workRequestId   String?            @unique
+  installationId  String
+  instrumentId    String?
+  serviceId       String?
+  category        Int
+  status          WorkOrderStatus    @default(SCHEDULED)
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  ongcEngineerId  String?
+  escortRequired  Boolean            @default(false)
+  reportUploaded  Boolean            @default(false)
+  uatDone         Boolean            @default(false)
+  remarks         String?
+  createdByUserId String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  installation    Installation       @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  instrument      Instrument?        @relation(fields: [instrumentId], references: [id], onDelete: SetNull)
+  service         ServiceCatalog?    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  ongcEngineer    OngcPersonnel?     @relation("WorkOrderEngineer", fields: [ongcEngineerId], references: [id], onDelete: SetNull)
+  createdByUser   User?              @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sourceRequest   WorkRequest?       @relation("RequestConvertedOrder")
+  assignments     WorkOrderAssignment[]
+  attendance      Attendance[]
+  documents       Document[]
+
+  @@index([installationId])
+  @@index([instrumentId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model WorkOrderAssignment {
+  id                  String            @id @default(uuid())
+  workOrderId         String
+  contractPersonnelId String
+  createdAt           DateTime          @default(now())
+  workOrder           WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  contractPersonnel   ContractPersonnel @relation(fields: [contractPersonnelId], references: [id], onDelete: Cascade)
+
+  @@unique([workOrderId, contractPersonnelId])
+  @@index([workOrderId])
+  @@index([contractPersonnelId])
+}
+
+model Attendance {
+  id                  String            @id @default(uuid())
+  contractPersonnelId String
+  date                DateTime
+  present             Boolean
+  checkIn             String?
+  checkOut            String?
+  site                String?
+  mode                DeploymentMode?
+  workOrderId         String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  contractPersonnel   ContractPersonnel @relation(fields: [contractPersonnelId], references: [id], onDelete: Cascade)
+  workOrder           WorkOrder?        @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+
+  @@unique([contractPersonnelId, date])
+  @@index([date])
+}
+
+model Document {
+  id               String           @id @default(uuid())
+  name             String
+  category         DocumentCategory
+  status           DocumentStatus   @default(DRAFT)
+  division         Division?
+  source           String?
+  mimeType         String?
+  size             Int?
+  objectKey        String?
+  workOrderId      String?
+  workRequestId    String?
+  uploadedByUserId String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  workOrder        WorkOrder?       @relation(fields: [workOrderId], references: [id], onDelete: SetNull)
+  workRequest      WorkRequest?     @relation(fields: [workRequestId], references: [id], onDelete: SetNull)
+  uploadedByUser   User?            @relation(fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([status])
+  @@index([workOrderId])
+  @@index([workRequestId])
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  username            String               @unique
+  passwordHash        String
+  role                Role                 @default(READ_ONLY)
+  displayName         String
+  managerId           String?              @unique
+  contractPersonnelId String?              @unique
+  ongcPersonnelId     String?              @unique
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  manager             InstallationManager? @relation("ManagerUser", fields: [managerId], references: [id], onDelete: SetNull)
+  contractPersonnel   ContractPersonnel?   @relation(fields: [contractPersonnelId], references: [id], onDelete: SetNull)
+  ongcPersonnel       OngcPersonnel?       @relation(fields: [ongcPersonnelId], references: [id], onDelete: SetNull)
+  auditLogs           AuditLog[]
+  documents           Document[]
+  workRequestsCreated WorkRequest[]        @relation("RequestedByManagerUser")
+  workOrdersCreated   WorkOrder[]
+}
+
+model SlaAvailability {
+  id           String   @id @default(uuid())
+  month        String   @unique
+  availability Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  payload   Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity])
+  @@index([createdAt])
+}
