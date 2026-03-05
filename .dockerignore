@@ -9,3 +9,8 @@ data
 uploads
 coverage
 *.local
+
+# Never bake secrets into the image
+.env
+.env.*
+!.env.example
