@@ -37,7 +37,6 @@ export const loginRateLimiter = rateLimit({
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { message: "Too many login attempts. Please try again in 15 minutes." },
-    keyGenerator: (req) => req.ip || req.headers["x-forwarded-for"] || "unknown",
     skip: () => process.env.NODE_ENV === "test",
 });
 
