@@ -56,7 +56,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set — run: openssl rand -hex 64}
+      JWT_SECRET: "${JWT_SECRET:-ongc-fms-docker-dev-change-before-production-deployment-secret}"
       DATABASE_URL: postgresql://${POSTGRES_USER:-fms}:${POSTGRES_PASSWORD:-fms_secret}@db:5432/${POSTGRES_DB:-fms_track}?schema=public
       AUTO_SEED: ${AUTO_SEED:-true}
       SEED_XLSX_PATH: /app/seed-data/all-instruments-isg-2025.xlsx

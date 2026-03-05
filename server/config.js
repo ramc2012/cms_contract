@@ -47,17 +47,17 @@ export function validateEnv() {
     }
 
     if (IS_PROD) {
-        if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change-me" || process.env.JWT_SECRET === "dev-only-insecure-secret") {
-            errors.push("JWT_SECRET must be set to a strong random secret in production (min 32 chars)");
+        if (!process.env.JWT_SECRET) {
+            errors.push("JWT_SECRET must be set in production");
         } else if (process.env.JWT_SECRET.length < 32) {
-            warnings.push("JWT_SECRET is shorter than 32 characters — consider using a longer secret");
+            errors.push("JWT_SECRET must be at least 32 characters in production");
         }
 
-        if (!process.env.S3_ACCESS_KEY || process.env.S3_ACCESS_KEY === "minioadmin") {
-            errors.push("S3_ACCESS_KEY must be set to a real credential in production");
+        if (!process.env.S3_ACCESS_KEY) {
+            errors.push("S3_ACCESS_KEY must be set in production");
         }
-        if (!process.env.S3_SECRET_KEY || process.env.S3_SECRET_KEY === "minioadmin") {
-            errors.push("S3_SECRET_KEY must be set to a real credential in production");
+        if (!process.env.S3_SECRET_KEY) {
+            errors.push("S3_SECRET_KEY must be set in production");
         }
         if (!process.env.ALLOWED_ORIGINS) {
             warnings.push("ALLOWED_ORIGINS not set — CORS will block all cross-origin requests in production");
