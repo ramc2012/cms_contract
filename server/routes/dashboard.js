@@ -99,7 +99,7 @@ router.get(
             }),
             prisma.workOrder.count(),
             prisma.workOrder.count({
-                where: { status: { in: [WorkOrderStatus.SCHEDULED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD] } },
+                where: { status: { in: [WorkOrderStatus.REQUESTED, WorkOrderStatus.ASSIGNED, WorkOrderStatus.DEPLOYED, WorkOrderStatus.WORK_DONE, WorkOrderStatus.REPORT_SUBMITTED] } },
             }),
             prisma.workOrder.count({ where: { status: WorkOrderStatus.COMPLETED } }),
             prisma.workOrder.count({

@@ -24,7 +24,11 @@ router.post(
         const user = await prisma.user.findUnique({
             where: { username },
             include: {
-                manager: true,
+                manager: {
+                    include: {
+                        assignments: { select: { installationId: true } },
+                    },
+                },
                 contractPersonnel: true,
                 ongcPersonnel: true,
             },
@@ -49,6 +53,7 @@ router.post(
             managerId: user.managerId,
             contractPersonnelId: user.contractPersonnelId,
             ongcPersonnelId: user.ongcPersonnelId,
+            installations: user.manager?.assignments?.map(a => a.installationId) || [],
         };
 
         const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
@@ -76,6 +81,11 @@ router.get(
                 managerId: true,
                 contractPersonnelId: true,
                 ongcPersonnelId: true,
+                manager: {
+                    select: {
+                        assignments: { select: { installationId: true } },
+                    },
+                },
             },
         });
 
@@ -84,7 +94,11 @@ router.get(
             return;
         }
 
-        res.json(user);
+        res.json({
+            ...user,
+            installations: user.manager?.assignments?.map(a => a.installationId) || [],
+            manager: undefined,
+        });
     })
 );
 

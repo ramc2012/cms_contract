@@ -1,17 +1,15 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-/* ─── ONGC Brand SVG Logo ──────────────────────────────────────────────── */
+/* ─── ONGC Brand Logo ──────────────────────────────────────────────── */
 function OngcLogo({ className = "" }) {
     return (
-        <svg className={className} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="47" stroke="#00843D" strokeWidth="2.5" fill="#00843D" fillOpacity="0.08" />
-            <circle cx="50" cy="50" r="40" stroke="#00843D" strokeWidth="0.8" strokeOpacity="0.35" fill="none" />
-            <path d="M50 18 C50 18 28 44 28 60 C28 72.15 37.85 82 50 82 C62.15 82 72 72.15 72 60 C72 44 50 18 50 18Z" fill="#00843D" />
-            <path d="M50 28 C50 28 38 47 38 59 C38 66 43.48 72 50 72 C56.52 72 62 66 62 59 C62 47 50 28 50 28Z" fill="#005c2b" />
-            <path d="M43 46 C42 50 41.5 55 42.5 60" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3" />
-            <path d="M50 14 C50 14 46 20 46 24 C46 27.3 47.8 30 50 30 C52.2 30 54 27.3 54 24 C54 20 50 14 50 14Z" fill="#FF6B00" opacity="0.9" />
-        </svg>
+        <img
+            src="/logo.png"
+            alt="ONGC Logo"
+            className={className}
+            style={{ objectFit: 'contain' }}
+        />
     );
 }
 
@@ -58,14 +56,8 @@ export default function Login() {
 
                 {/* Brand header */}
                 <div className="flex flex-col items-center mb-7">
-                    <OngcLogo className="w-20 h-20 mb-4 drop-shadow-lg" />
-                    <div className="text-center">
-                        <h1 className="text-3xl font-black tracking-[0.18em] text-white uppercase">
-                            ONGC
-                        </h1>
-                        <p className="text-[10px] font-semibold tracking-widest text-green-500 uppercase mt-0.5">
-                            Oil and Natural Gas Corporation
-                        </p>
+                    <div className="bg-white/95 px-6 py-3 rounded-xl shadow-xl shadow-black/50 mb-4 inline-flex justify-center border border-gray-200">
+                        <OngcLogo className="w-56 h-auto drop-shadow-sm" />
                     </div>
                     {/* Live badge */}
                     <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-950/60 border border-green-800/40 text-green-400 text-[10px] font-medium tracking-wider uppercase">
@@ -113,7 +105,7 @@ export default function Login() {
                                     className="w-full bg-[#131f35] border border-gray-700/70 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-600 transition-all text-sm placeholder-gray-600"
                                     placeholder="Enter username"
                                     value={form.username}
-                                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                                    onChange={(e) => setForm(prev => ({ ...prev, username: e.target.value }))}
                                     disabled={loading}
                                 />
                             </div>
@@ -130,7 +122,7 @@ export default function Login() {
                                     className="w-full bg-[#131f35] border border-gray-700/70 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/40 focus:border-green-600 transition-all text-sm placeholder-gray-600 tracking-widest"
                                     placeholder="••••••••"
                                     value={form.password}
-                                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                                    onChange={(e) => setForm(prev => ({ ...prev, password: e.target.value }))}
                                     disabled={loading}
                                 />
                             </div>

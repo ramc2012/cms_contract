@@ -2,24 +2,24 @@ import React from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const STATUS_COLORS = {
-    SCHEDULED: "#3b82f6",
-    IN_PROGRESS: "#f59e0b",
-    ON_HOLD: "#6b7280",
-    PENDING_REPORT: "#8b5cf6",
+    REQUESTED: "#3b82f6",
+    ASSIGNED: "#8b5cf6",
+    DEPLOYED: "#f59e0b",
+    WORK_DONE: "#14b8a6",
+    REPORT_SUBMITTED: "#d946ef",
     COMPLETED: "#10b981",
-    CANCELLED: "#ef4444",
 };
 
 const STATUS_LABELS = {
-    SCHEDULED: "Scheduled",
-    IN_PROGRESS: "In Progress",
-    ON_HOLD: "On Hold",
-    PENDING_REPORT: "Pending Rpt",
+    REQUESTED: "Requested",
+    ASSIGNED: "Assigned",
+    DEPLOYED: "Deployed",
+    WORK_DONE: "Work Done",
+    REPORT_SUBMITTED: "Report Submitted",
     COMPLETED: "Completed",
-    CANCELLED: "Cancelled",
 };
 
-const ORDER = ["SCHEDULED", "IN_PROGRESS", "PENDING_REPORT", "COMPLETED", "ON_HOLD", "CANCELLED"];
+const ORDER = ["REQUESTED", "ASSIGNED", "DEPLOYED", "WORK_DONE", "REPORT_SUBMITTED", "COMPLETED"];
 
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;

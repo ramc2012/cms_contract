@@ -21,7 +21,7 @@ export default function Installations() {
         try {
             const [insts, mgrs] = await Promise.all([
                 fetchApi("/installations"),
-                fetchApi("/managers"),
+                fetchApi("/installation-managers"),
             ]);
             setInstallations(insts);
             setManagers(mgrs);

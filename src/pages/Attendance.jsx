@@ -3,145 +3,179 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import DataTable from "../components/DataTable";
 import StatCard from "../components/StatCard";
-import { formatDate, toInputDate } from "../utils/helpers";
+import { toInputDate } from "../utils/helpers";
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    });
+}
+
+function daysBetween(from, to) {
+    const d1 = new Date(from);
+    const d2 = new Date(to);
+    return Math.max(1, Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24)) + 1);
+}
 
 export default function Attendance() {
     const { role, fetchApi } = useAuth();
-    const { toast } = useToast();
-    const [data, setData] = useState([]);
+    const { toast, confirm } = useToast();
+    const [absences, setAbsences] = useState([]);
     const [personnel, setPersonnel] = useState([]);
     const [summary, setSummary] = useState(null);
 
     const currentMonth = toInputDate(new Date()).substring(0, 7);
     const [month, setMonth] = useState(currentMonth);
     const [showForm, setShowForm] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const [form, setForm] = useState({});
+
+    const canEdit = ["ONGC_ADMIN", "ONGC_ENGINEER", "CMS_COORDINATOR"].includes(role);
+    const isAdmin = role === "ONGC_ADMIN";
 
     useEffect(() => {
         loadData();
         // eslint-disable-next-line
     }, [month]);
 
-    // Load summary whenever data changes
-    useEffect(() => {
-        loadSummary();
-        // eslint-disable-next-line
-    }, [month, data]);
-
     async function loadData() {
         try {
             const q = new URLSearchParams();
-            // If we pick a month, fetch dates from 1st to 31st
-            if (month) {
-                q.append("from", `${month}-01`);
-                q.append("to", `${month}-31`);
-            }
-            const [att, pers] = await Promise.all([
-                fetchApi(`/attendance?${q}`),
-                fetchApi("/contract-personnel")
+            if (month) q.append("month", month);
+
+            const [abs, pers, sum] = await Promise.all([
+                fetchApi(`/absences?${q}`),
+                fetchApi("/contract-personnel"),
+                fetchApi(`/absences/summary?${q}`),
             ]);
-            setData(att);
+            setAbsences(abs);
             setPersonnel(pers);
+            setSummary(sum);
         } catch (err) {
             toast(err.message, "error");
         }
     }
 
-    async function loadSummary() {
-        try {
-            const q = new URLSearchParams();
-            if (month) q.append("month", month);
-            const sum = await fetchApi(`/attendance/summary?${q}`);
-            setSummary(sum);
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    async function saveAttendance(e) {
+    async function saveAbsence(e) {
         e.preventDefault();
         try {
-            await fetchApi("/attendance", {
-                method: "POST",
-                body: form,
-            });
-            toast("Attendance record saved", "success");
+            if (!form.contractPersonnelId) throw new Error("Select a person");
+            if (!form.fromDate || !form.toDate) throw new Error("Both dates required");
+
+            if (editingId) {
+                await fetchApi(`/absences/${editingId}`, { method: "PUT", body: form });
+                toast("Absence period updated", "success");
+            } else {
+                await fetchApi("/absences", { method: "POST", body: form });
+                toast("Absence period recorded", "success");
+            }
             setShowForm(false);
+            setEditingId(null);
             loadData();
         } catch (err) {
             toast(err.message, "error");
         }
     }
 
-    const isEditor = ["ONGC_ADMIN", "ONGC_ENGINEER", "CMS_COORDINATOR", "CMS_TECHNICIAN"].includes(role);
+    async function deleteAbsence(id) {
+        const ok = await confirm("Delete this absence record?");
+        if (!ok) return;
+        try {
+            await fetchApi(`/absences/${id}`, { method: "DELETE" });
+            toast("Absence deleted", "warn");
+            loadData();
+        } catch (err) {
+            toast(err.message, "error");
+        }
+    }
 
     const cols = [
-        { header: "Date", render: (r) => <span className="font-medium text-white">{formatDate(r.date)}</span> },
         {
             header: "Personnel", render: (r) => (
                 <div className="flex flex-col">
-                    <span className="text-gray-200">{r.contractPersonnel?.name}</span>
+                    <span className="text-gray-200 font-medium">{r.contractPersonnel?.name}</span>
                     <span className="text-[10px] text-gray-500 font-mono tracking-widest">{r.contractPersonnel?.personnelCode}</span>
+                    {r.contractPersonnel?.designation && (
+                        <span className="text-[10px] text-gray-500">{r.contractPersonnel.designation}</span>
+                    )}
                 </div>
             )
         },
         {
-            header: "Status", render: (r) => (
-                r.present
-                    ? <span className="bg-emerald-900/30 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded text-xs">Present</span>
-                    : <span className="bg-red-900/30 text-red-400 border border-red-800 px-2 py-0.5 rounded text-xs">Absent</span>
+            header: "Absence Period", render: (r) => (
+                <div className="flex items-center gap-2 text-sm">
+                    <span className="bg-red-900/20 text-red-300 border border-red-900/50 px-2 py-0.5 rounded text-xs font-medium">
+                        {formatDateShort(r.fromDate)}
+                    </span>
+                    <span className="text-gray-600">→</span>
+                    <span className="bg-red-900/20 text-red-300 border border-red-900/50 px-2 py-0.5 rounded text-xs font-medium">
+                        {formatDateShort(r.toDate)}
+                    </span>
+                </div>
             )
         },
         {
-            header: "Mode & Location", render: (r) => {
-                if (!r.present) return "-";
+            header: "Duration", render: (r) => {
+                const days = daysBetween(r.fromDate, r.toDate);
                 return (
-                    <div className="flex flex-col text-xs space-y-1">
-                        <div className="flex items-center gap-1.5">
-                            <span className={`px-1.5 py-0.5 rounded border ${r.mode === "ONSITE" ? "bg-blue-900/30 border-blue-800 text-blue-300" :
-                                    r.mode === "REMOTE" ? "bg-purple-900/30 border-purple-800 text-purple-300" :
-                                        "bg-gray-800 border-gray-700 text-gray-400"
-                                }`}>
-                                {r.mode || "UNKNOWN"}
-                            </span>
-                        </div>
-                        {r.site && <div className="text-gray-400 truncate max-w-[200px]" title={r.site}>📍 {r.site}</div>}
-                    </div>
+                    <span className={`text-sm font-semibold ${days >= 7 ? "text-red-400" : days >= 3 ? "text-amber-400" : "text-gray-300"}`}>
+                        {days} day{days !== 1 ? "s" : ""}
+                    </span>
                 );
             }
         },
         {
-            header: "Work Order", render: (r) => (
-                r.workOrder ? (
-                    <span className="font-mono text-xs text-blue-400 hover:text-blue-300 cursor-pointer">{r.workOrder.workOrderNo}</span>
-                ) : "-"
+            header: "Reason", render: (r) => (
+                <span className="text-gray-400 text-xs max-w-[200px] truncate block" title={r.reason || "No reason"}>
+                    {r.reason || <span className="italic text-gray-600">No reason specified</span>}
+                </span>
+            )
+        },
+        {
+            header: "Recorded By", render: (r) => (
+                <span className="text-gray-500 text-xs">{r.createdByUser?.displayName || "System"}</span>
             )
         },
     ];
 
-    const actions = (r) => (
-        <div className="flex items-center justify-end">
-            {isEditor && (
+    const actions = (r) => {
+        if (!canEdit) return null;
+        return (
+            <div className="flex items-center justify-end gap-2">
                 <button
                     onClick={() => {
+                        setEditingId(r.id);
                         setForm({
-                            ...r,
-                            date: toInputDate(r.date),
+                            contractPersonnelId: r.contractPersonnelId,
+                            fromDate: toInputDate(r.fromDate),
+                            toDate: toInputDate(r.toDate),
+                            reason: r.reason || "",
                         });
                         setShowForm(true);
                     }}
-                    className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white"
+                    className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white transition"
                 >
                     Edit
                 </button>
-            )}
-        </div>
-    );
+                {isAdmin && (
+                    <button
+                        onClick={() => deleteAbsence(r.id)}
+                        className="text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-800 transition"
+                    >
+                        Del
+                    </button>
+                )}
+            </div>
+        );
+    };
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-                <h1 className="text-3xl font-light text-white tracking-tight">Attendance & Deployment</h1>
+                <h1 className="text-3xl font-light text-white tracking-tight">Absence Tracker</h1>
                 <div className="flex items-center gap-4">
                     <input
                         type="month"
@@ -149,19 +183,20 @@ export default function Attendance() {
                         onChange={(e) => setMonth(e.target.value)}
                         className="bg-gray-900 border border-gray-700 text-white px-3 py-1.5 rounded-md focus:ring-blue-500 focus:border-blue-500 shadow-inner"
                     />
-                    {isEditor && (
+                    {canEdit && (
                         <button
                             onClick={() => {
+                                setEditingId(null);
                                 setForm({
-                                    date: toInputDate(new Date()),
-                                    present: true,
-                                    mode: "ONSITE"
+                                    fromDate: toInputDate(new Date()),
+                                    toDate: toInputDate(new Date()),
+                                    reason: "",
                                 });
                                 setShowForm(true);
                             }}
                             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md shadow-lg shadow-blue-500/30 text-sm font-medium transition"
                         >
-                            Log Entry
+                            + Add Absence
                         </button>
                     )}
                 </div>
@@ -170,28 +205,50 @@ export default function Attendance() {
             {summary && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard label="Total Staff Tracked" value={summary.staffCount} />
-                    <StatCard label="Total Man-days (Month)" value={summary.totalPresent} />
-                    <StatCard label="Onsite Days" value={summary.onsiteDays} />
-                    <StatCard label="Remote Support Days" value={summary.remoteDays} />
+                    <StatCard label="Total Absent Days" value={summary.totalAbsentDays} variant="danger" />
+                    <StatCard
+                        label="Staff with Absences"
+                        value={summary.staffSummary?.filter(s => s.absentDays > 0).length || 0}
+                    />
+                    <StatCard
+                        label="Avg Absent Days / Person"
+                        value={summary.staffCount > 0 ? (summary.totalAbsentDays / summary.staffCount).toFixed(1) : "0"}
+                    />
+                </div>
+            )}
+
+            {/* Per-person summary */}
+            {summary?.staffSummary && summary.staffSummary.some(s => s.absentDays > 0) && (
+                <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Staff Absence Summary</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {summary.staffSummary
+                            .filter(s => s.absentDays > 0)
+                            .sort((a, b) => b.absentDays - a.absentDays)
+                            .map(s => (
+                                <div key={s.id} className="flex items-center justify-between bg-gray-800 rounded px-3 py-2">
+                                    <div>
+                                        <span className="text-sm text-gray-200">{s.name}</span>
+                                        <span className="text-[10px] font-mono text-gray-500 ml-2">{s.personnelCode}</span>
+                                    </div>
+                                    <span className={`text-sm font-bold ${s.absentDays >= 7 ? "text-red-400" : s.absentDays >= 3 ? "text-amber-400" : "text-gray-300"}`}>
+                                        {s.absentDays}d
+                                    </span>
+                                </div>
+                            ))
+                        }
+                    </div>
                 </div>
             )}
 
             {showForm && (
                 <div className="bg-gray-800 border-l-4 border-blue-500 p-6 rounded-lg shadow-xl">
-                    <h3 className="text-lg font-medium text-white mb-4">Log Attendance Event</h3>
-                    <form onSubmit={saveAttendance} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Date</label>
-                            <input
-                                type="date"
-                                required
-                                value={form.date || ""}
-                                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-                            />
-                        </div>
+                    <h3 className="text-lg font-medium text-white mb-4">
+                        {editingId ? "Edit Absence Period" : "Record Absence Period"}
+                    </h3>
+                    <form onSubmit={saveAbsence} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-2">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Personnel</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Personnel <span className="text-red-500">*</span></label>
                             <select
                                 required
                                 value={form.contractPersonnelId || ""}
@@ -199,71 +256,45 @@ export default function Attendance() {
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             >
                                 <option value="">Select Personnel</option>
-                                {personnel.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                {personnel.map(p => <option key={p.id} value={p.id}>{p.name} ({p.personnelCode})</option>)}
                             </select>
                         </div>
-
-                        <div className="flex items-center pt-6">
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
-                                <input
-                                    type="checkbox"
-                                    checked={form.present !== false}
-                                    onChange={(e) => setForm({ ...form, present: e.target.checked })}
-                                    className="rounded bg-gray-900 border-gray-700 text-blue-600 focus:ring-blue-500 w-5 h-5"
-                                />
-                                Present
-                            </label>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">From Date <span className="text-red-500">*</span></label>
+                            <input
+                                type="date"
+                                required
+                                value={form.fromDate || ""}
+                                onChange={(e) => setForm({ ...form, fromDate: e.target.value })}
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                            />
                         </div>
-
-                        {form.present !== false && (
-                            <>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Deployment Mode</label>
-                                    <select
-                                        value={form.mode || "ONSITE"}
-                                        onChange={(e) => setForm({ ...form, mode: e.target.value })}
-                                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-                                    >
-                                        <option value="ONSITE">ONSITE</option>
-                                        <option value="REMOTE">REMOTE</option>
-                                    </select>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Site / Location</label>
-                                    <input
-                                        type="text"
-                                        value={form.site || ""}
-                                        onChange={(e) => setForm({ ...form, site: e.target.value })}
-                                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white placeholder-gray-600"
-                                        placeholder="E.g., Rig Alpha, Base Camp..."
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Work Order (Optional)</label>
-                                    <input
-                                        type="text"
-                                        value={form.workOrderId || ""}
-                                        onChange={(e) => setForm({ ...form, workOrderId: e.target.value })}
-                                        className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono text-sm placeholder-gray-600"
-                                        placeholder="Paste ID..."
-                                    />
-                                </div>
-                            </>
-                        )}
-
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">To Date <span className="text-red-500">*</span></label>
+                            <input
+                                type="date"
+                                required
+                                value={form.toDate || ""}
+                                onChange={(e) => setForm({ ...form, toDate: e.target.value })}
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                            />
+                        </div>
+                        <div className="md:col-span-4">
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Reason</label>
+                            <input
+                                type="text"
+                                value={form.reason || ""}
+                                onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white placeholder-gray-600"
+                                placeholder="e.g., Medical leave, Personal leave..."
+                            />
+                        </div>
                         <div className="md:col-span-4 flex justify-end gap-3 mt-4 border-t border-gray-700 pt-4">
-                            <button
-                                type="button"
-                                onClick={() => setShowForm(false)}
-                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition"
-                            >
+                            <button type="button" onClick={() => { setShowForm(false); setEditingId(null); }} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition">
                                 Cancel
                             </button>
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded shadow-md shadow-blue-500/20 font-medium transition"
-                            >
-                                Save Record
+                            <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded shadow-md shadow-blue-500/20 font-medium transition">
+                                {editingId ? "Update" : "Save"}
                             </button>
                         </div>
                     </form>
@@ -271,21 +302,18 @@ export default function Attendance() {
             )}
 
             <DataTable
-                title="Daily Logs"
-                data={data}
+                title="Absence Records"
+                data={absences}
                 columns={cols}
-                actions={actions}
-                searchPlaceholder="Search personnel, location..."
+                actions={canEdit ? actions : undefined}
+                searchPlaceholder="Search personnel, reason..."
                 onSearch={(q) => {
-                    if (!q) {
-                        loadData();
-                        return;
-                    }
+                    if (!q) { loadData(); return; }
                     const term = q.toLowerCase();
-                    setData((prev) => prev.filter(r =>
+                    setAbsences((prev) => prev.filter(r =>
                         (r.contractPersonnel?.name || "").toLowerCase().includes(term) ||
-                        (r.site || "").toLowerCase().includes(term) ||
-                        (r.workOrder?.workOrderNo || "").toLowerCase().includes(term)
+                        (r.reason || "").toLowerCase().includes(term) ||
+                        (r.contractPersonnel?.personnelCode || "").toLowerCase().includes(term)
                     ));
                 }}
             />

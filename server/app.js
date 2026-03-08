@@ -16,11 +16,16 @@ import personnelRoutes from "./routes/personnel.js";
 import workRequestsRoutes from "./routes/workRequests.js";
 import workOrdersRoutes from "./routes/workOrders.js";
 import attendanceRoutes from "./routes/attendance.js";
+import absencesRoutes from "./routes/absences.js";
 import documentsRoutes from "./routes/documents.js";
+import reportsRoutes from "./routes/reports.js";
 import slaRoutes from "./routes/sla.js";
 import auditLogsRoutes from "./routes/auditLogs.js";
 
 const app = express();
+
+/* ── Trust Proxy ── */
+app.set("trust proxy", 1); // Required for express-rate-limit behind generic load balancers/docker port mapping
 
 /* ── Security headers ── */
 app.use(
@@ -123,7 +128,9 @@ app.use("/api", personnelRoutes); // mounts /contract-personnel, /ongc-personnel
 app.use("/api/work-requests", workRequestsRoutes);
 app.use("/api/work-orders", workOrdersRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/absences", absencesRoutes);
 app.use("/api/documents", documentsRoutes);
+app.use("/api/reports", reportsRoutes);
 app.use("/api/sla", slaRoutes);
 app.use("/api/audit-logs", auditLogsRoutes);
 

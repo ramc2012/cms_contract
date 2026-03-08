@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import RequestDesk from "./pages/RequestDesk";
 import AssignmentDesk from "./pages/AssignmentDesk";
 import Attendance from "./pages/Attendance";
+import Reports from "./pages/Reports";
 
 // Settings Pages
 import Services from "./pages/Settings/Services";
@@ -59,8 +60,8 @@ function SettingsLayout() {
             key={item.path}
             href={item.path}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${location.pathname === item.path
-                ? "bg-gray-800 text-white shadow-sm"
-                : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
+              ? "bg-gray-800 text-white shadow-sm"
+              : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
               }`}
           >
             {item.label}
@@ -103,6 +104,7 @@ export default function App() {
       <Route path="/requests" element={<PrivateRoute><RequestDesk /></PrivateRoute>} />
       <Route path="/assignments" element={<PrivateRoute><AssignmentDesk /></PrivateRoute>} />
       <Route path="/attendance" element={<PrivateRoute><Attendance /></PrivateRoute>} />
+      <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
 
       <Route path="/settings/*" element={<PrivateRoute><SettingsLayout /></PrivateRoute>} />
 

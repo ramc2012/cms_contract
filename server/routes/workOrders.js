@@ -62,6 +62,10 @@ router.get(
                     include: { contractPersonnel: true },
                     orderBy: { contractPersonnel: { name: "asc" } },
                 },
+                timeline: {
+                    include: { user: { select: { displayName: true } } },
+                    orderBy: { createdAt: "asc" }
+                },
             },
         });
 
@@ -95,7 +99,7 @@ router.post(
                     instrumentId,
                     serviceId: normalizeText(req.body?.serviceId) || null,
                     category,
-                    status: parseEnum(req.body?.status, WorkOrderStatus, WorkOrderStatus.SCHEDULED),
+                    status: parseEnum(req.body?.status, WorkOrderStatus, WorkOrderStatus.REQUESTED),
                     scheduledDate: parseDateInput(req.body?.scheduledDate) || new Date(),
                     ongcEngineerId: normalizeText(req.body?.ongcEngineerId) || null,
                     escortRequired: parseBool(req.body?.escortRequired, category > 1),
@@ -115,6 +119,14 @@ router.post(
                     skipDuplicates: true,
                 });
             }
+
+            await tx.workOrderTimeline.create({
+                data: {
+                    workOrderId: order.id,
+                    status: order.status,
+                    userId: req.user.sub,
+                }
+            });
 
             return tx.workOrder.findUnique({
                 where: { id: order.id },
@@ -137,12 +149,7 @@ router.post(
 
 router.put(
     "/:id",
-    authorize([
-        Role.ONGC_ADMIN,
-        Role.ONGC_ENGINEER,
-        Role.CMS_COORDINATOR,
-        Role.CMS_TECHNICIAN,
-    ]),
+    authorize([Role.ONGC_ADMIN]),
     withAsync(async (req, res) => {
         const existing = await prisma.workOrder.findUnique({ where: { id: req.params.id } });
         if (!existing) {
@@ -199,6 +206,17 @@ router.put(
                 }
             }
 
+            const newStatus = parseEnum(req.body?.status, WorkOrderStatus, existing.status);
+            if (newStatus !== existing.status) {
+                await tx.workOrderTimeline.create({
+                    data: {
+                        workOrderId: order.id,
+                        status: newStatus,
+                        userId: req.user.sub,
+                    }
+                });
+            }
+
             return tx.workOrder.findUnique({
                 where: { id: order.id },
                 include: {
@@ -208,6 +226,10 @@ router.put(
                     ongcEngineer: true,
                     assignments: {
                         include: { contractPersonnel: true },
+                    },
+                    timeline: {
+                        include: { user: { select: { displayName: true } } },
+                        orderBy: { createdAt: "asc" }
                     },
                 },
             });
@@ -220,7 +242,7 @@ router.put(
 
 router.delete(
     "/:id",
-    authorize([Role.ONGC_ADMIN, Role.ONGC_ENGINEER]),
+    authorize([Role.ONGC_ADMIN]),
     withAsync(async (req, res) => {
         const existing = await prisma.workOrder.findUnique({ where: { id: req.params.id } });
         if (!existing) {
@@ -246,6 +268,85 @@ router.delete(
 
         await logAudit(req.user.sub, "DELETE", "work_order", existing.id, {});
         res.json({ message: "Work order deleted" });
+    })
+);
+
+/* ─── PATCH advance status (for non-admin users) ─── */
+const STATUS_ORDER = [
+    WorkOrderStatus.REQUESTED,
+    WorkOrderStatus.ASSIGNED,
+    WorkOrderStatus.DEPLOYED,
+    WorkOrderStatus.WORK_DONE,
+    WorkOrderStatus.REPORT_SUBMITTED,
+    WorkOrderStatus.COMPLETED,
+];
+
+router.patch(
+    "/:id/advance",
+    authorize([
+        Role.ONGC_ADMIN,
+        Role.ONGC_ENGINEER,
+        Role.CMS_COORDINATOR,
+        Role.CMS_TECHNICIAN,
+    ]),
+    withAsync(async (req, res) => {
+        const existing = await prisma.workOrder.findUnique({ where: { id: req.params.id } });
+        if (!existing) {
+            res.status(404).json({ message: "Work order not found" });
+            return;
+        }
+
+        const newStatus = parseEnum(req.body?.status, WorkOrderStatus, null);
+        if (!newStatus) {
+            res.status(400).json({ message: "Valid status is required" });
+            return;
+        }
+
+        const currentIdx = STATUS_ORDER.indexOf(existing.status);
+        const newIdx = STATUS_ORDER.indexOf(newStatus);
+
+        if (newIdx <= currentIdx) {
+            res.status(400).json({ message: `Cannot move from ${existing.status} to ${newStatus}. Status can only advance forward.` });
+            return;
+        }
+
+        const updated = await prisma.$transaction(async (tx) => {
+            const order = await tx.workOrder.update({
+                where: { id: req.params.id },
+                data: {
+                    status: newStatus,
+                    remarks: req.body?.remarks || existing.remarks,
+                },
+            });
+
+            await tx.workOrderTimeline.create({
+                data: {
+                    workOrderId: order.id,
+                    status: newStatus,
+                    userId: req.user.sub,
+                },
+            });
+
+            return tx.workOrder.findUnique({
+                where: { id: order.id },
+                include: {
+                    installation: true,
+                    instrument: true,
+                    service: true,
+                    ongcEngineer: true,
+                    assignments: {
+                        include: { contractPersonnel: true },
+                    },
+                    timeline: {
+                        include: { user: { select: { displayName: true } } },
+                        orderBy: { createdAt: "asc" },
+                    },
+                },
+            });
+        });
+
+        await logAudit(req.user.sub, "ADVANCE", "work_order", updated.id, { from: existing.status, to: newStatus });
+        res.json(updated);
     })
 );
 

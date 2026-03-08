@@ -19,8 +19,8 @@ export function AuthProvider({ children }) {
 
             try {
                 const data = await apiFetch("/auth/me", {}, token);
-                setUser(data.user);
-                setRole(data.user.role);
+                setUser(data);
+                setRole(data.role);
             } catch (err) {
                 console.error("Auth init error:", err);
                 // Token might be expired/invalid
@@ -43,7 +43,8 @@ export function AuthProvider({ children }) {
 
         localStorage.setItem("fms_token", data.token);
         setToken(data.token);
-        // User data will be fetched by the useEffect hook since token changed
+        setUser(data.user);
+        setRole(data.user.role);
         return data;
     };
 

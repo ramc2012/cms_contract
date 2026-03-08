@@ -42,10 +42,11 @@ export const OPEN_REQUEST_STATUSES = [
 ];
 
 export const OPEN_ORDER_STATUSES = [
-    WorkOrderStatus.SCHEDULED,
-    WorkOrderStatus.IN_PROGRESS,
-    WorkOrderStatus.ON_HOLD,
-    WorkOrderStatus.PENDING_REPORT,
+    WorkOrderStatus.REQUESTED,
+    WorkOrderStatus.ASSIGNED,
+    WorkOrderStatus.DEPLOYED,
+    WorkOrderStatus.WORK_DONE,
+    WorkOrderStatus.REPORT_SUBMITTED,
 ];
 
 export function inferRequestOrigin(row) {

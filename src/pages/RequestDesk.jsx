@@ -140,7 +140,7 @@ export default function RequestDesk() {
     }
 
     const isIM = role === "INSTALLATION_MANAGER";
-    const imAssignedIds = user?.installations?.map((i) => i.id) || [];
+    const imAssignedIds = user?.installations || [];
 
     const allowedInstallations =
         isIM ? installations.filter((i) => imAssignedIds.includes(i.id)) : installations;
@@ -162,8 +162,8 @@ export default function RequestDesk() {
                         )}
                         {r.priority && (
                             <span className={`text-[10px] px-1.5 py-0.5 rounded border ${r.priority === "HIGH" ? "bg-red-900/30 text-red-400 border-red-800" :
-                                    r.priority === "MEDIUM" ? "bg-orange-900/30 text-orange-400 border-orange-800" :
-                                        "bg-gray-800 text-gray-400 border-gray-700"
+                                r.priority === "MEDIUM" ? "bg-orange-900/30 text-orange-400 border-orange-800" :
+                                    "bg-gray-800 text-gray-400 border-gray-700"
                                 }`}>
                                 {r.priority}
                             </span>
@@ -235,28 +235,30 @@ export default function RequestDesk() {
                     Submit
                 </button>
             )}
-            {/* Edit logic */}
+            {/* Edit: admin can edit any, IM can edit own non-converted requests */}
             {r.status !== "CONVERTED" && r.status !== "REJECTED" && (
-                <button
-                    onClick={() => {
-                        setEditingReq(r);
-                        setFormReq({
-                            ...r,
-                            preferredDate: toInputDate(r.preferredDate),
-                            installationId: r.installationId || "",
-                            instrumentId: r.instrumentId || "",
-                            serviceId: r.serviceId || "",
-                            requestedByManagerId: r.requestedByManagerId || "",
-                        });
-                        setShowReqForm(true);
-                    }}
-                    className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white"
-                >
-                    Edit
-                </button>
-            )}
-            {/* Admin overriding delete */}
-            {r.status !== "CONVERTED" && (role === "ONGC_ADMIN" || isIM || role === "ONGC_ENGINEER") && (
+                role === "ONGC_ADMIN" || (isIM && imAssignedIds.some(id => id === r.installationId))
+            ) && (
+                    <button
+                        onClick={() => {
+                            setEditingReq(r);
+                            setFormReq({
+                                ...r,
+                                preferredDate: toInputDate(r.preferredDate),
+                                installationId: r.installationId || "",
+                                instrumentId: r.instrumentId || "",
+                                serviceId: r.serviceId || "",
+                                requestedByManagerId: r.requestedByManagerId || "",
+                            });
+                            setShowReqForm(true);
+                        }}
+                        className="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white"
+                    >
+                        Edit
+                    </button>
+                )}
+            {/* Delete: admin only */}
+            {r.status !== "CONVERTED" && role === "ONGC_ADMIN" && (
                 <button
                     onClick={() => deleteRequest(r.id)}
                     className="text-xs bg-red-900/50 hover:bg-red-800 text-red-200 px-2 py-1 rounded border border-red-800"

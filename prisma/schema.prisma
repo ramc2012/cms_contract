@@ -49,11 +49,12 @@ enum WorkRequestStatus {
 }
 
 enum WorkOrderStatus {
-  SCHEDULED
-  IN_PROGRESS
+  REQUESTED
+  ASSIGNED
+  DEPLOYED
+  WORK_DONE
+  REPORT_SUBMITTED
   COMPLETED
-  ON_HOLD
-  PENDING_REPORT
 }
 
 enum DeploymentMode {
@@ -67,6 +68,7 @@ enum DocumentCategory {
   DEPLOYMENT
   CONTRACT
   REQUEST_ATTACHMENT
+  PROOF_PHOTO
   OTHER
 }
 
@@ -146,6 +148,7 @@ model ContractPersonnel {
   user           User?
   assignments    WorkOrderAssignment[]
   attendance     Attendance[]
+  absences       AbsencePeriod[]
 }
 
 model OngcPersonnel {
@@ -233,7 +236,7 @@ model WorkOrder {
   instrumentId    String?
   serviceId       String?
   category        Int
-  status          WorkOrderStatus    @default(SCHEDULED)
+  status          WorkOrderStatus    @default(REQUESTED)
   scheduledDate   DateTime
   completedDate   DateTime?
   ongcEngineerId  String?
@@ -253,6 +256,7 @@ model WorkOrder {
   assignments     WorkOrderAssignment[]
   attendance      Attendance[]
   documents       Document[]
+  timeline        WorkOrderTimeline[]
 
   @@index([installationId])
   @@index([instrumentId])
@@ -336,6 +340,8 @@ model User {
   documents           Document[]
   workRequestsCreated WorkRequest[]        @relation("RequestedByManagerUser")
   workOrdersCreated   WorkOrder[]
+  timelineEntries     WorkOrderTimeline[]
+  absencesCreated     AbsencePeriod[]      @relation("AbsenceCreator")
 }
 
 model SlaAvailability {
@@ -358,4 +364,32 @@ model AuditLog {
 
   @@index([entity])
   @@index([createdAt])
+}
+
+model WorkOrderTimeline {
+  id          String          @id @default(uuid())
+  workOrderId String
+  status      WorkOrderStatus
+  userId      String?
+  createdAt   DateTime        @default(now())
+
+  workOrder   WorkOrder       @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([workOrderId])
+}
+
+model AbsencePeriod {
+  id                  String            @id @default(uuid())
+  contractPersonnelId String
+  fromDate            DateTime
+  toDate              DateTime
+  reason              String?
+  createdByUserId     String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  contractPersonnel   ContractPersonnel @relation(fields: [contractPersonnelId], references: [id], onDelete: Cascade)
+  createdByUser       User?             @relation("AbsenceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([contractPersonnelId])
 }

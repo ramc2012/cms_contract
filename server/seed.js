@@ -611,13 +611,21 @@ async function seedWorkRequestsAndOrders(prisma, managerMap, ongcPersonnelMap) {
           instrumentId: instrument.id,
           serviceId: instrument.serviceId,
           category: i + 1,
-          status: i === 0 ? WorkOrderStatus.SCHEDULED : WorkOrderStatus.IN_PROGRESS,
+          status: i === 0 ? WorkOrderStatus.REQUESTED : WorkOrderStatus.ASSIGNED,
           scheduledDate: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000),
           ongcEngineerId: engineer.id,
           escortRequired: i + 1 > 1,
           remarks: "Seed work order",
         },
         update: {},
+      });
+
+      await prisma.workOrderTimeline.create({
+        data: {
+          workOrderId: workOrder.id,
+          status: workOrder.status,
+          userId: managerUser?.id || null,
+        }
       });
 
       await prisma.workRequest.update({

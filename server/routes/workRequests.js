@@ -460,7 +460,7 @@ router.post(
             return;
         }
 
-        const status = parseEnum(req.body?.status, WorkOrderStatus, WorkOrderStatus.SCHEDULED);
+        const status = parseEnum(req.body?.status, WorkOrderStatus, WorkOrderStatus.REQUESTED);
         const ongcEngineerId = normalizeText(req.body?.ongcEngineerId) || req.user.ongcPersonnelId || null;
         const workOrderNo = await nextCode("workOrder", "workOrderNo", "WO", 5);
 
@@ -493,6 +493,14 @@ router.post(
                 },
             });
 
+            await tx.workOrderTimeline.create({
+                data: {
+                    workOrderId: order.id,
+                    status: order.status,
+                    userId: req.user.sub,
+                }
+            });
+
             const contractPersonnelIds = Array.isArray(req.body?.contractPersonnelIds)
                 ? req.body.contractPersonnelIds
                 : [];
@@ -516,6 +524,10 @@ router.post(
                     ongcEngineer: true,
                     assignments: {
                         include: { contractPersonnel: true },
+                    },
+                    timeline: {
+                        include: { user: { select: { displayName: true } } },
+                        orderBy: { createdAt: "asc" }
                     },
                     sourceRequest: true,
                 },
