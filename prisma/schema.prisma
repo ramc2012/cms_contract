@@ -16,9 +16,9 @@ enum Role {
   READ_ONLY
 }
 
-enum Division {
-  PRODUCTION
-  DRILLING
+enum InstallationCategory {
+  DRILLING_RIG
+  SURFACE_INSTALLATION
 }
 
 enum WorkingStatus {
@@ -94,8 +94,8 @@ model ServiceCatalog {
 model Installation {
   id                 String                          @id @default(uuid())
   name               String                          @unique
-  division           Division
-  area               String
+  category           InstallationCategory            @default(SURFACE_INSTALLATION)
+  area               String                          @default("AREA 01")
   location           String?
   isActive           Boolean                         @default(true)
   createdAt          DateTime                        @default(now())
@@ -301,7 +301,7 @@ model Document {
   name             String
   category         DocumentCategory
   status           DocumentStatus   @default(DRAFT)
-  division         Division?
+  categoryFilter   InstallationCategory?
   source           String?
   mimeType         String?
   size             Int?

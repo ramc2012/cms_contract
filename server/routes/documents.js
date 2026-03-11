@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Division, DocumentCategory, DocumentStatus, Role, WorkOrderStatus } from "@prisma/client";
+import { InstallationCategory, DocumentCategory, DocumentStatus, Role, WorkOrderStatus } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { logAudit } from "../lib/audit.js";
 import { normalizeText, parseEnum, formatBytes, withAsync } from "../lib/helpers.js";
@@ -17,7 +17,7 @@ router.get(
                 ? parseEnum(req.query.category, DocumentCategory, undefined)
                 : undefined,
             status: req.query.status ? parseEnum(req.query.status, DocumentStatus, undefined) : undefined,
-            division: req.query.division ? parseEnum(req.query.division, Division, undefined) : undefined,
+            categoryFilter: req.query.categoryFilter ? parseEnum(req.query.categoryFilter, InstallationCategory, undefined) : undefined,
             workOrderId: normalizeText(req.query.workOrderId) || undefined,
             workRequestId: normalizeText(req.query.workRequestId) || undefined,
         };
@@ -82,7 +82,7 @@ router.post(
                 name: fileName,
                 category,
                 status: parseEnum(req.body?.status, DocumentStatus, DocumentStatus.DRAFT),
-                division: parseEnum(req.body?.division, Division, null),
+                categoryFilter: parseEnum(req.body?.categoryFilter, InstallationCategory, null),
                 source: normalizeText(req.body?.source) || "Manual Upload",
                 mimeType: stored?.mimeType || req.body?.mimeType || null,
                 size: stored?.size || null,

@@ -13,12 +13,13 @@ import RequestDesk from "./pages/RequestDesk";
 import AssignmentDesk from "./pages/AssignmentDesk";
 import Attendance from "./pages/Attendance";
 import Reports from "./pages/Reports";
+import EquipmentHealth from "./pages/EquipmentHealth";
 
 // Settings Pages
 import Services from "./pages/Settings/Services";
 import Installations from "./pages/Settings/Installations";
 import Instruments from "./pages/Settings/Instruments";
-import Personnel from "./pages/Settings/Personnel";
+import UserManagement from "./pages/Settings/UserManagement";
 
 // A private route wrapper
 function PrivateRoute({ children }) {
@@ -54,7 +55,7 @@ function SettingsLayout() {
           { path: "/settings/services", label: "Services" },
           { path: "/settings/installations", label: "Installations" },
           { path: "/settings/instruments", label: "Instruments" },
-          { path: "/settings/personnel", label: "Personnel Directory" },
+          { path: "/settings/users", label: "User Management" },
         ].map(item => (
           <a
             key={item.path}
@@ -75,7 +76,7 @@ function SettingsLayout() {
           <Route path="services" element={<Services />} />
           <Route path="installations" element={<Installations />} />
           <Route path="instruments" element={<Instruments />} />
-          <Route path="personnel" element={<Personnel />} />
+          <Route path="users" element={<UserManagement />} />
         </Routes>
       </div>
     </div>
@@ -105,6 +106,7 @@ export default function App() {
       <Route path="/assignments" element={<PrivateRoute><AssignmentDesk /></PrivateRoute>} />
       <Route path="/attendance" element={<PrivateRoute><Attendance /></PrivateRoute>} />
       <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
+      <Route path="/equipment-health" element={<PrivateRoute><EquipmentHealth /></PrivateRoute>} />
 
       <Route path="/settings/*" element={<PrivateRoute><SettingsLayout /></PrivateRoute>} />
 

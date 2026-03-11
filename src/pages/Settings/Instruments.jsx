@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import DataTable from "../../components/DataTable";
+import OverlayDialog from "../../components/OverlayDialog";
 import { formatDate, toInputDate } from "../../utils/helpers";
 
 export default function Instruments() {
@@ -103,6 +104,7 @@ export default function Instruments() {
                 <div className="flex flex-col text-xs">
                     <span className="text-gray-300">🏢 {r.installation?.name}</span>
                     <span className="text-gray-500">Service: {r.service?.name}</span>
+                    <span className="text-gray-500">Type: {r.equipmentType || "—"}</span>
                     {r.remarks && <span className="text-gray-600 block truncate max-w-xs">{r.remarks}</span>}
                 </div>
             )
@@ -110,8 +112,8 @@ export default function Instruments() {
         {
             header: "Calibration", render: (r) => {
                 let cn = "bg-gray-800 text-gray-400 border-gray-700";
-                if (r.calStatus === "VALID") cn = "bg-green-900 text-green-200 border-green-700";
-                if (r.calStatus === "DUE_SOON") cn = "bg-orange-900 text-orange-200 border-orange-700";
+                if (r.calStatus === "CALIBRATED") cn = "bg-green-900 text-green-200 border-green-700";
+                if (r.calStatus === "PENDING") cn = "bg-orange-900 text-orange-200 border-orange-700";
                 if (r.calStatus === "OVERDUE") cn = "bg-red-900 text-red-200 border-red-700";
 
                 return (
@@ -172,7 +174,7 @@ export default function Instruments() {
                 <button
                     onClick={() => {
                         setEditing(null);
-                        setForm({ isActive: true, calStatus: "VALID", calibrationFrequencyMonths: 12 });
+                        setForm({ isActive: true, calStatus: "CALIBRATED", workingStatus: "WORKING" });
                         setShowForm(true);
                     }}
                     className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium shadow-lg shadow-blue-500/30"
@@ -181,12 +183,39 @@ export default function Instruments() {
                 </button>
             </div>
 
-            {showForm && (
-                <div className="bg-gray-800 border-l-4 border-teal-500 p-6 rounded-lg mb-6 shadow-xl">
-                    <h3 className="text-lg font-medium text-white mb-4">
-                        {editing ? "Edit Instrument" : "Add Instrument"}
-                    </h3>
-                    <form onSubmit={saveInstrument} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+                <input
+                    type="text"
+                    placeholder="Search instruments..."
+                    value={filters.search || ""}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    className="flex-1 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                />
+                <select
+                    value={filters.installationId || ""}
+                    onChange={(e) => setFilters({ ...filters, installationId: e.target.value })}
+                    className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                >
+                    <option value="">All Installations</option>
+                    {installations.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+                <select
+                    value={filters.serviceId || ""}
+                    onChange={(e) => setFilters({ ...filters, serviceId: e.target.value })}
+                    className="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                >
+                    <option value="">All Services</option>
+                    {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+            </div>
+
+            <OverlayDialog
+                open={showForm}
+                onClose={() => setShowForm(false)}
+                title={editing ? "Edit Instrument" : "Add Instrument"}
+                wide
+            >
+                    <form onSubmit={saveInstrument} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tag No *</label>
                             <input
@@ -197,12 +226,22 @@ export default function Instruments() {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Instrument Code *</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Instrument Code</label>
                             <input
-                                required
                                 value={form.instrumentCode || ""}
                                 onChange={(e) => setForm({ ...form, instrumentCode: e.target.value })}
+                                placeholder="Auto-generated"
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Equipment Type *</label>
+                            <input
+                                required
+                                value={form.equipmentType || ""}
+                                onChange={(e) => setForm({ ...form, equipmentType: e.target.value })}
+                                placeholder="e.g. Pressure Transmitter"
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             />
                         </div>
 
@@ -231,9 +270,8 @@ export default function Instruments() {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service Type *</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Service Type</label>
                             <select
-                                required
                                 value={form.serviceId || ""}
                                 onChange={(e) => setForm({ ...form, serviceId: e.target.value })}
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
@@ -242,19 +280,67 @@ export default function Instruments() {
                                 {services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Make</label>
+                            <input
+                                value={form.make || ""}
+                                onChange={(e) => setForm({ ...form, make: e.target.value })}
+                                placeholder="Manufacturer"
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Model</label>
+                            <input
+                                value={form.model || ""}
+                                onChange={(e) => setForm({ ...form, model: e.target.value })}
+                                placeholder="Model No"
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                            />
+                        </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Status</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Serial No</label>
+                            <input
+                                value={form.serialNo || ""}
+                                onChange={(e) => setForm({ ...form, serialNo: e.target.value })}
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Working Status</label>
                             <select
-                                value={form.calStatus || "VALID"}
+                                value={form.workingStatus || "WORKING"}
+                                onChange={(e) => setForm({ ...form, workingStatus: e.target.value })}
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+                            >
+                                <option value="WORKING">WORKING</option>
+                                <option value="NOT_WORKING">NOT WORKING</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Cal. Status</label>
+                            <select
+                                value={form.calStatus || "CALIBRATED"}
                                 onChange={(e) => setForm({ ...form, calStatus: e.target.value })}
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             >
-                                <option value="VALID">VALID</option>
-                                <option value="DUE_SOON">DUE_SOON</option>
+                                <option value="CALIBRATED">CALIBRATED</option>
+                                <option value="PENDING">PENDING</option>
                                 <option value="OVERDUE">OVERDUE</option>
-                                <option value="EXEMPT">EXEMPT</option>
                             </select>
+                        </div>
+
+                        <div className="flex items-center pt-6">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-white">
+                                <input
+                                    type="checkbox"
+                                    checked={form.scadaConnected === true}
+                                    onChange={(e) => setForm({ ...form, scadaConnected: e.target.checked })}
+                                    className="rounded bg-gray-900 border-gray-700 text-blue-600 w-5 h-5"
+                                />
+                                SCADA Connected
+                            </label>
                         </div>
 
                         <div>
@@ -275,18 +361,8 @@ export default function Instruments() {
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Freq (Months)</label>
-                            <input
-                                type="number"
-                                min="1"
-                                value={form.calibrationFrequencyMonths || 12}
-                                onChange={(e) => setForm({ ...form, calibrationFrequencyMonths: e.target.value })}
-                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-                            />
-                        </div>
 
-                        <div className="md:col-span-3 flex justify-end gap-3 mt-4 border-t border-gray-700 pt-4">
+                        <div className="md:col-span-4 flex justify-end gap-3 mt-4 border-t border-gray-700 pt-4">
                             <button
                                 type="button"
                                 onClick={() => setShowForm(false)}
@@ -302,8 +378,7 @@ export default function Instruments() {
                             </button>
                         </div>
                     </form>
-                </div>
-            )}
+            </OverlayDialog>
 
             <DataTable
                 title="Instruments"
@@ -317,8 +392,16 @@ export default function Instruments() {
                             value={filters.installationId}
                             onChange={(e) => setFilters({ ...filters, installationId: e.target.value })}
                         >
-                            <option value="">All Instn</option>
+                            <option value="">All Installations</option>
                             {installations.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                        </select>
+                        <select
+                            className="px-3 py-2 bg-gray-900 border border-gray-700 rounded text-sm text-white"
+                            value={filters.serviceId}
+                            onChange={(e) => setFilters({ ...filters, serviceId: e.target.value })}
+                        >
+                            <option value="">All Services</option>
+                            {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                         <select
                             className="px-3 py-2 bg-gray-900 border border-gray-700 rounded text-sm text-white"
@@ -326,7 +409,7 @@ export default function Instruments() {
                             onChange={(e) => setFilters({ ...filters, calStatus: e.target.value })}
                         >
                             <option value="">All Statuses</option>
-                            {["VALID", "DUE_SOON", "OVERDUE", "EXEMPT"].map(s => <option key={s} value={s}>{s}</option>)}
+                            {["CALIBRATED", "PENDING", "OVERDUE"].map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                     </>
                 }

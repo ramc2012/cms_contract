@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import DataTable from "../../components/DataTable";
+import OverlayDialog from "../../components/OverlayDialog";
 
 export default function Installations() {
     const { fetchApi } = useAuth();
@@ -11,16 +12,31 @@ export default function Installations() {
     const [showForm, setShowForm] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({});
+    const [filters, setFilters] = useState({ search: "", category: "", includeInactive: false });
 
     useEffect(() => {
         loadData();
         // eslint-disable-next-line
-    }, []);
+    }, [filters.category]); // Re-run loadData when category filter changes
 
     async function loadData() {
         try {
+            const queryParams = new URLSearchParams();
+            if (filters.category) {
+                queryParams.append("category", filters.category);
+            }
+            // Add other filters as needed, e.g., search, includeInactive
+            // if (filters.search) {
+            //     queryParams.append("search", filters.search);
+            // }
+            // if (filters.includeInactive) {
+            //     queryParams.append("includeInactive", "true");
+            // }
+
+            const installationUrl = `/installations${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+
             const [insts, mgrs] = await Promise.all([
-                fetchApi("/installations"),
+                fetchApi(installationUrl),
                 fetchApi("/installation-managers"),
             ]);
             setInstallations(insts);
@@ -67,8 +83,8 @@ export default function Installations() {
 
     const columns = [
         { header: "Name", field: "name", className: "font-semibold text-gray-200" },
-        { header: "Division", field: "division" },
-        { header: "Type", field: "type" },
+        { header: "Category", field: "category" },
+        { header: "Area", field: "area" },
         {
             header: "Managers", render: (r) => (
                 <div className="flex flex-col gap-1 text-xs">
@@ -117,7 +133,7 @@ export default function Installations() {
                 <button
                     onClick={() => {
                         setEditing(null);
-                        setForm({ type: "ONSHORE", division: "MUMBAI" });
+                        setForm({ category: "DRILLING_RIG", area: "ONSHORE" });
                         setShowForm(true);
                     }}
                     className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-medium shadow-lg shadow-blue-500/30"
@@ -126,11 +142,11 @@ export default function Installations() {
                 </button>
             </div>
 
-            {showForm && (
-                <div className="bg-gray-800 border-l-4 border-blue-500 p-6 rounded-lg mb-6 shadow-xl">
-                    <h3 className="text-lg font-medium text-white mb-4">
-                        {editing ? "Edit Installation" : "Add Installation"}
-                    </h3>
+            <OverlayDialog
+                open={showForm}
+                onClose={() => setShowForm(false)}
+                title={editing ? "Edit Installation" : "Add Installation"}
+            >
                     <form onSubmit={saveInstallation} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Name *</label>
@@ -143,31 +159,30 @@ export default function Installations() {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Division *</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Category *</label>
                             <select
                                 required
-                                value={form.division || "MUMBAI"}
-                                onChange={(e) => setForm({ ...form, division: e.target.value })}
+                                value={form.category || "DRILLING_RIG"}
+                                onChange={(e) => setForm({ ...form, category: e.target.value })}
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             >
-                                <option value="MUMBAI">MUMBAI</option>
-                                <option value="GUJARAT">GUJARAT</option>
-                                <option value="ASSAM">ASSAM</option>
-                                <option value="OTHER">OTHER</option>
+                                <option value="DRILLING_RIG">Drilling Rigs</option>
+                                <option value="SURFACE_INSTALLATION">Surface Installations</option>
                             </select>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Type *</label>
+                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Area *</label>
                             <select
                                 required
-                                value={form.type || "ONSHORE"}
-                                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                                value={form.area || "AREA 01"}
+                                onChange={(e) => setForm({ ...form, area: e.target.value })}
                                 className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
                             >
-                                <option value="ONSHORE">ONSHORE</option>
-                                <option value="OFFSHORE">OFFSHORE</option>
-                                <option value="VESSEL">VESSEL</option>
+                                <option value="AREA 01">Area 01</option>
+                                <option value="AREA 02">Area 02</option>
+                                <option value="AREA 03">Area 03</option>
+                                <option value="AREA 04">Area 04</option>
                             </select>
                         </div>
 
@@ -205,8 +220,7 @@ export default function Installations() {
                             </button>
                         </div>
                     </form>
-                </div>
-            )}
+            </OverlayDialog>
 
             <DataTable
                 title="Active Installations"
@@ -221,7 +235,7 @@ export default function Installations() {
                     const t = q.toLowerCase();
                     setInstallations((prev) => prev.filter(r =>
                         (r.name || "").toLowerCase().includes(t) ||
-                        (r.division || "").toLowerCase().includes(t)
+                        (r.category || "").toLowerCase().includes(t)
                     ));
                 }}
             />

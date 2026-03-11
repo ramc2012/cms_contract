@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import DataTable from "../../components/DataTable";
+import OverlayDialog from "../../components/OverlayDialog";
 
 export default function Services() {
     const { fetchApi } = useAuth();
@@ -103,11 +104,11 @@ export default function Services() {
                 </button>
             </div>
 
-            {showForm && (
-                <div className="bg-gray-800 border-l-4 border-blue-500 p-6 rounded-lg mb-6 shadow-xl">
-                    <h3 className="text-lg font-medium text-white mb-4">
-                        {editing ? "Edit Service" : "Add Service"}
-                    </h3>
+            <OverlayDialog
+                open={showForm}
+                onClose={() => setShowForm(false)}
+                title={editing ? "Edit Service" : "Add Service"}
+            >
                     <form onSubmit={saveService} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Code *</label>
@@ -152,8 +153,7 @@ export default function Services() {
                             </button>
                         </div>
                     </form>
-                </div>
-            )}
+            </OverlayDialog>
 
             <DataTable
                 title="Services"

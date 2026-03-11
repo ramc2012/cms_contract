@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
     CalibrationStatus,
-    Division,
+    InstallationCategory,
     Priority,
     Role,
     WorkOrderStatus,
@@ -39,8 +39,8 @@ router.get(
                 : undefined,
             installationId: normalizeText(req.query.installationId) || undefined,
             requestedByManagerId: normalizeText(req.query.managerId) || undefined,
-            installation: req.query.division
-                ? { division: parseEnum(req.query.division, Division, undefined) }
+            installation: req.query.category
+                ? { category: parseEnum(req.query.category, InstallationCategory, undefined) }
                 : undefined,
         };
 

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Division, Role } from "@prisma/client";
+import { InstallationCategory, Role } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { logAudit } from "../lib/audit.js";
 import { normalizeText, parseBool, parseEnum, withAsync } from "../lib/helpers.js";
@@ -12,7 +12,7 @@ router.get(
     withAsync(async (req, res) => {
         const filters = {
             isActive: req.query.includeInactive === "true" ? undefined : true,
-            division: req.query.division ? parseEnum(req.query.division, Division, null) : undefined,
+            category: req.query.category ? parseEnum(req.query.category, InstallationCategory, null) : undefined,
             name:
                 req.query.search && normalizeText(req.query.search)
                     ? { contains: normalizeText(req.query.search), mode: "insensitive" }
@@ -21,7 +21,7 @@ router.get(
 
         const rows = await prisma.installation.findMany({
             where: filters,
-            orderBy: [{ division: "asc" }, { name: "asc" }],
+            orderBy: [{ category: "asc" }, { name: "asc" }],
             include: {
                 _count: {
                     select: { instruments: true, workOrders: true, workRequests: true },
@@ -45,20 +45,20 @@ router.post(
     authorize([Role.ONGC_ADMIN, Role.ONGC_ENGINEER, Role.CMS_COORDINATOR]),
     withAsync(async (req, res) => {
         const name = normalizeText(req.body?.name);
-        const division = parseEnum(req.body?.division, Division, null);
+        const category = parseEnum(req.body?.category, InstallationCategory, null);
         const area = normalizeText(req.body?.area);
         const location = normalizeText(req.body?.location) || null;
         const managerIds = Array.isArray(req.body?.managerIds) ? req.body.managerIds : [];
 
-        if (!name || !division || !area) {
-            res.status(400).json({ message: "name, division and area are required" });
+        if (!name || !category || !area) {
+            res.status(400).json({ message: "name, category and area are required" });
             return;
         }
 
         const created = await prisma.installation.create({
             data: {
                 name,
-                division,
+                category,
                 area,
                 location,
                 managerAssignments: {
@@ -92,7 +92,7 @@ router.put(
                 where: { id: req.params.id },
                 data: {
                     name: normalizeText(req.body?.name) || existing.name,
-                    division: parseEnum(req.body?.division, Division, existing.division),
+                    category: parseEnum(req.body?.category, InstallationCategory, existing.category),
                     area: normalizeText(req.body?.area) || existing.area,
                     location:
                         req.body?.location === undefined

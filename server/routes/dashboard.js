@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
     CalibrationStatus,
     DeploymentMode,
-    Division,
+    InstallationCategory,
     DocumentCategory,
     DocumentStatus,
     Priority,
@@ -28,7 +28,7 @@ router.get(
         res.json({
             contract: CONTRACT_CONTEXT,
             enums: {
-                division: Object.values(Division),
+                category: Object.values(InstallationCategory),
                 workingStatus: Object.values(WorkingStatus),
                 calibrationStatus: Object.values(CalibrationStatus),
                 priority: Object.values(Priority),
@@ -116,14 +116,14 @@ router.get(
 
         // Status breakdowns
         const [
-            divisionBreakdown,
+            categoryBreakdown,
             requestStatusBreakdown,
             orderStatusBreakdown,
             calStatusBreakdown,
             orderCategoryBreakdown,
             requestPriorityBreakdown,
         ] = await Promise.all([
-            prisma.installation.groupBy({ by: ["division"], where: { isActive: true }, _count: { _all: true } }),
+            prisma.installation.groupBy({ by: ["category"], where: { isActive: true }, _count: { _all: true } }),
             prisma.workRequest.groupBy({ by: ["status"], _count: { _all: true } }),
             prisma.workOrder.groupBy({ by: ["status"], _count: { _all: true } }),
             prisma.instrument.groupBy({ by: ["calStatus"], where: { isActive: true }, _count: { _all: true } }),
@@ -189,7 +189,7 @@ router.get(
             select: {
                 id: true,
                 name: true,
-                division: true,
+                category: true,
                 _count: {
                     select: { instruments: true },
                 },
@@ -208,7 +208,7 @@ router.get(
             return {
                 id: inst.id,
                 name: inst.name,
-                division: inst.division,
+                category: inst.category,
                 total,
                 valid,
                 dueSoon,
@@ -234,7 +234,7 @@ router.get(
                 activeContractPersonnel,
                 activeOngcPersonnel,
             },
-            divisionBreakdown,
+            categoryBreakdown,
             requestStatusBreakdown,
             orderStatusBreakdown,
             calStatusBreakdown,

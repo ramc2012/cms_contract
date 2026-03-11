@@ -1,11 +1,63 @@
 import { Router } from "express";
-import { CalibrationStatus, Division, Role, WorkingStatus } from "@prisma/client";
+import { CalibrationStatus, InstallationCategory, Role, WorkingStatus } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { logAudit } from "../lib/audit.js";
 import { normalizeText, parseBool, parseEnum, parseDateInput, nextCode, withAsync } from "../lib/helpers.js";
 import { authorize } from "../middleware/auth.js";
 
 const router = Router();
+
+/* ── Equipment Health tile data (includes last completed work order) ── */
+router.get(
+    "/health",
+    withAsync(async (req, res) => {
+        const where = {
+            isActive: true,
+            installationId: normalizeText(req.query.installationId) || undefined,
+            serviceId: normalizeText(req.query.serviceId) || undefined,
+        };
+
+        const rows = await prisma.instrument.findMany({
+            where,
+            include: {
+                installation: { select: { id: true, name: true } },
+                service: { select: { id: true, name: true } },
+                workOrders: {
+                    where: { status: "COMPLETED" },
+                    orderBy: { completedDate: "desc" },
+                    take: 1,
+                    select: {
+                        workOrderNo: true,
+                        completedDate: true,
+                        scheduledDate: true,
+                        status: true,
+                        remarks: true,
+                        category: true,
+                    },
+                },
+            },
+            orderBy: [{ installation: { name: "asc" } }, { tagNo: "asc" }],
+        });
+
+        const result = rows.map((r) => ({
+            id: r.id,
+            tagNo: r.tagNo,
+            instrumentCode: r.instrumentCode,
+            equipmentType: r.equipmentType,
+            make: r.make,
+            model: r.model,
+            calStatus: r.calStatus,
+            workingStatus: r.workingStatus,
+            lastCalibration: r.lastCalibration,
+            nextCalibration: r.nextCalibration,
+            installation: r.installation,
+            service: r.service,
+            lastJob: r.workOrders[0] || null,
+        }));
+
+        res.json(result);
+    })
+);
 
 router.get(
     "/",
@@ -17,8 +69,8 @@ router.get(
             calStatus: req.query.calStatus
                 ? parseEnum(req.query.calStatus, CalibrationStatus, undefined)
                 : undefined,
-            installation: req.query.division
-                ? { division: parseEnum(req.query.division, Division, undefined) }
+            installation: req.query.category
+                ? { category: parseEnum(req.query.category, InstallationCategory, undefined) }
                 : undefined,
             OR:
                 normalizeText(req.query.search) !== ""

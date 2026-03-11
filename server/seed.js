@@ -6,7 +6,7 @@ import path from "node:path";
 import XLSX from "xlsx";
 import {
   CalibrationStatus,
-  Division,
+  InstallationCategory,
   PrismaClient,
   Priority,
   Role,
@@ -94,12 +94,12 @@ function normalizeName(value) {
     .trim();
 }
 
-function inferDivision(name) {
+function inferCategory(name) {
   const value = normalizeName(name).toUpperCase();
   if (DRILLING_KEYWORDS.some((keyword) => value.includes(keyword))) {
-    return Division.DRILLING;
+    return InstallationCategory.DRILLING_RIG;
   }
-  return Division.PRODUCTION;
+  return InstallationCategory.SURFACE_INSTALLATION;
 }
 
 function parseDate(value) {
@@ -188,7 +188,7 @@ function extractScadaRecords(workbook) {
       source: "SCADA",
       installationName: currentInstallation,
       area: currentArea,
-      division: inferDivision(currentInstallation),
+      category: inferCategory(currentInstallation),
       tagNo: safeInstrumentTag(tag, "SCADA", index),
       equipmentType: "SCADA Flow Meter",
       serviceName: normalizeName(row["Service "]) || "SCADA Telemetry",
@@ -247,7 +247,7 @@ function extractCtmRecords(workbook) {
       source: "CTM",
       installationName,
       area: currentArea,
-      division: inferDivision(installationName),
+      category: inferCategory(installationName),
       tagNo,
       equipmentType: "CTM",
       serviceName: "Custody Transfer",
@@ -330,7 +330,7 @@ async function seedInstallationsAndInstruments(prisma, records, serviceMap) {
     records.map((item) => ({
       name: item.installationName,
       area: item.area || "AREA 01",
-      division: item.division || Division.PRODUCTION,
+      category: item.category || InstallationCategory.SURFACE_INSTALLATION,
       location: item.installationName,
     })),
     (item) => item.name.toLowerCase()
@@ -343,7 +343,7 @@ async function seedInstallationsAndInstruments(prisma, records, serviceMap) {
       create: installation,
       update: {
         area: installation.area,
-        division: installation.division,
+        category: installation.category,
         location: installation.location,
         isActive: true,
       },

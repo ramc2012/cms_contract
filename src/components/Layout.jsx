@@ -44,6 +44,11 @@ const IconReports = () => (
         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
     </svg>
 );
+const IconEquipmentHealth = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 flex-shrink-0">
+        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+    </svg>
+);
 
 const ICON_MAP = {
     "/dashboard": <IconDashboard />,
@@ -51,6 +56,7 @@ const ICON_MAP = {
     "/assignments": <IconAssignments />,
     "/attendance": <IconAttendance />,
     "/reports": <IconReports />,
+    "/equipment-health": <IconEquipmentHealth />,
     "/settings": <IconSettings />,
 };
 
@@ -59,6 +65,7 @@ export function roleTabs(role) {
         case "ONGC_ADMIN":
             return [
                 { id: "/dashboard", label: "Dashboard" },
+                { id: "/equipment-health", label: "Equip. Health" },
                 { id: "/requests", label: "Request Desk" },
                 { id: "/assignments", label: "Assignment Desk" },
                 { id: "/attendance", label: "Attendance" },
@@ -68,6 +75,7 @@ export function roleTabs(role) {
         case "ONGC_ENGINEER":
             return [
                 { id: "/dashboard", label: "Dashboard" },
+                { id: "/equipment-health", label: "Equip. Health" },
                 { id: "/requests", label: "Request Desk" },
                 { id: "/assignments", label: "Assignment Desk" },
                 { id: "/attendance", label: "Attendance" },
@@ -76,6 +84,7 @@ export function roleTabs(role) {
         case "CMS_COORDINATOR":
             return [
                 { id: "/dashboard", label: "Dashboard" },
+                { id: "/equipment-health", label: "Equip. Health" },
                 { id: "/assignments", label: "Assignment Desk" },
                 { id: "/attendance", label: "Attendance" },
                 { id: "/reports", label: "Reports" },
@@ -88,6 +97,7 @@ export function roleTabs(role) {
         case "INSTALLATION_MANAGER":
             return [
                 { id: "/dashboard", label: "Dashboard" },
+                { id: "/equipment-health", label: "Equip. Health" },
                 { id: "/requests", label: "My Requests" },
                 { id: "/reports", label: "Reports" },
             ];

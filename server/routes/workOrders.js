@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Division, Role, WorkOrderStatus, WorkRequestStatus } from "@prisma/client";
+import { Role, WorkOrderStatus, InstallationCategory } from "@prisma/client";
 import prisma from "../lib/prisma.js";
 import { logAudit } from "../lib/audit.js";
 import { normalizeText, parseBool, parseEnum, parseDateInput, nextCode, withAsync } from "../lib/helpers.js";
@@ -17,8 +17,8 @@ router.get(
             installationId: normalizeText(req.query.installationId) || undefined,
             serviceId: normalizeText(req.query.serviceId) || undefined,
             category: req.query.category ? Number(req.query.category) : undefined,
-            installation: req.query.division
-                ? { division: parseEnum(req.query.division, Division, undefined) }
+            installation: req.query.category
+                ? { category: parseEnum(req.query.category, InstallationCategory, undefined) }
                 : undefined,
             OR:
                 normalizeText(req.query.search) !== ""
